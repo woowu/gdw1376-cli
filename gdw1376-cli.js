@@ -179,6 +179,26 @@ const options = {
         type: 'string',
         short: 'p',
     },
+    pn: {
+        type: 'string',
+        short: 'A',
+    },
+    fn: {
+        type: 'string',
+        short: 'T',
+    },
+    period: {
+        type: 'string',
+        short: 'P',
+    },
+    periods: {
+        type: 'string',
+        short: 'n',
+    },
+    time: {
+        type: 'string',
+        short: 't',
+    },
     output: {
         type: 'string',
         short: 'o',
@@ -186,6 +206,17 @@ const options = {
 };
 
 var dataSink;
+var fn;
+var pn;
+var period;
+var periods;
+const reqTime = {
+    year: 0,
+    mon: 0,
+    day: 0,
+    hr: 0,
+    m: 0,
+};
 
 const { values, positionals } = parseArgs(
     { options, allowPositionals: true }
@@ -198,8 +229,47 @@ if (! values.port || parseInt(values.port) <= 0) {
     console.error("No valid TCP port number provided");
     process.exit();
 }
-if (values.output) {
+if (values.output)
     dataSink = fs.createWriteStream(values.output, { flags: 'a' });
+if (values.fn) 
+    fn = parseInt(values.fn);
+else {
+    console.error('No fn provided');
+    process.exit(1);
+}
+if (values.pn)
+    pn = parseInt(values.pn);
+else {
+    console.error('No pn provided');
+    process.exit(1);
+}
+if (values.period)
+    period = parseInt(values.period);
+else {
+    console.error('No period provided');
+    process.exit(1);
+}
+if (values.periods)
+    periods = parseInt(values.periods);
+else {
+    console.error('No periods provided');
+    process.exit(1);
+}
+if (values.time) {
+    // yy,MM,dd,hh,mm
+    const tokens = values.time.split(',');
+    if (tokens.length != 5) {
+        console.error('Bad time format. Expect: yy,mm,dd,hh,mmm');
+        process.exit(1);
+    }
+    reqTime.year = parseInt(tokens[0]);
+    reqTime.mon = parseInt(tokens[1]);
+    reqTime.day = parseInt(tokens[2]);
+    reqTime.hr = parseInt(tokens[3]);
+    reqTime.min = parseInt(tokens[4]);
+} else {
+    console.error('No request time provided');
+    process.exit(1);
 }
 
 function requstHistData(cnt)
@@ -214,6 +284,7 @@ function requstHistData(cnt)
         receivedChksum: 0,
     };
     const client = new net.Socket();
+    var seqno = 0;
 
     return new Promise(resolv => {
         parserInit(parser);
@@ -221,14 +292,16 @@ function requstHistData(cnt)
         console.log(`[${cnt}] Connecting ${values.server}:${values.port}`);
         client.connect({ port: parseInt(values.port), host: values.server },
             () => {
-                const frame = mkReadHistReq(0x68, AFN_READ_HIST, 1, 302, 26, 7, 25, 0, 15
-                    , 1, 96);
-                //console.log(`-> [${frame.length}]:`, hexy(frame));
+                const frame = mkReadHistReq(++seqno, AFN_READ_HIST
+                    , pn, fn
+                    , reqTime.year, reqTime.mon, reqTime.day
+                    , reqTime.hr, reqTime.min
+                    , period, periods);
+                process.exit(1);
                 client.end(frame);
             }
         );
         client.on('data', (data) => {
-            //console.log(`<- [%{data.length}]:`, hexy(data));
             for (const c of data) {
                 parserOnChar(parser, c);
             }
