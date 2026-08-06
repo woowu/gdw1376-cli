@@ -297,7 +297,6 @@ function requstHistData(cnt)
                     , reqTime.year, reqTime.mon, reqTime.day
                     , reqTime.hr, reqTime.min
                     , period, periods);
-                process.exit(1);
                 client.end(frame);
             }
         );
@@ -319,5 +318,5 @@ var startTime = Date.now();
 while (true) {
     await requstHistData(++cnt);
     console.log(`Average speed ${1000*cnt/(Date.now() - startTime)} `
-        + `connections per second`);
+        + `requests per second`);
 }
